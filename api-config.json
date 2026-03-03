@@ -1,0 +1,27 @@
+{
+  "apis": {
+    "glm": {
+      "name": "GLM-4 Plus",
+      "apiKey": "764bcbe559d144999f80f23878a45f2f.mmxXqw2xqA19J8pN",
+      "baseURL": "https://open.bigmodel.cn/api/paas/v4",
+      "model": "glm-4-plus",
+      "status": "configured",
+      "lastTest": null
+    },
+    "qwen": {
+      "name": "通义千问Max",
+      "apiKey": "sk-6fa39fc29fd141f694c60ff718ab3b58",
+      "baseURL": "https://dashscope.aliyuncs.com/api/v1",
+      "model": "qwen-max",
+      "status": "configured",
+      "lastTest": null
+    }
+  },
+  "settings": {
+    "defaultModel": "glm",
+    "autoTest": true,
+    "hideConfig": true,
+    "created": "2024-03-03T12:00:00.000Z",
+    "updated": "2024-03-03T12:00:00.000Z"
+  }
+}
