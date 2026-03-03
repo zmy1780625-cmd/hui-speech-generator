@@ -1,53 +1,96 @@
+// Vercel Serverless Function - 生成演讲稿
 export default async function handler(req, res) {
+    // 启用CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
+    
+    if (req.method !== 'POST') {
+        res.status(405).json({ error: '方法不允许' });
+        return;
+    }
+    
+    try {
+        const { prompt, provider, model } = req.body;
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+        if (!prompt) {
+            res.status(400).json({ error: '生成提示不能为空' });
+            return;
+        }
 
-  try {
-    const { topic, style, length } = req.body;
+        // 获取API密钥和配置
+        let apiKey, baseURL, modelName, providerName;
+        
+        if (provider === 'glm') {
+            apiKey = process.env.GLM_API_KEY;
+            baseURL = 'https://open.bigmodel.cn/api/paas/v4';
+            modelName = model || 'glm-4-plus';
+            providerName = 'GLM-4 Plus';
+        } else if (provider === 'qwen') {
+            apiKey = process.env.QWEN_API_KEY;
+            baseURL = 'https://dashscope.aliyuncs.com/api/v1';
+            modelName = model || 'qwen-max';
+            providerName = '通义千问Max';
+        } else {
+            res.status(404).json({ error: '不支持的API提供商' });
+            return;
+        }
 
-    const response = await fetch(
-      "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.DASHSCOPE_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "qwen-plus",
-          input: {
+        if (!apiKey) {
+            res.status(400).json({ error: '请先在Vercel环境变量中配置API密钥' });
+            return;
+        }
+
+        console.log(`🤖 正在使用 ${providerName} 生成演讲稿...`);
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        };
+
+        const requestBody = {
+            model: modelName,
             messages: [
-              {
-                role: "system",
-                content: "你是专业演讲稿写作专家，表达有感染力，结构清晰。"
-              },
-              {
-                role: "user",
-                content: `请写一篇演讲稿。
-主题：${topic}
-风格：${style}
-字数：${length}`
-              }
-            ]
-          },
-          parameters: {
-            temperature: 0.8
-          }
-        })
-      }
-    );
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            max_tokens: 4000,
+            temperature: 0.7
+        };
 
-    const data = await response.json();
+        const response = await fetch(`${baseURL}/chat/completions`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody)
+        });
 
-    return res.status(200).json({
-      text: data.output.text
-    });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`API请求失败: ${response.status} - ${errorData.error?.message || response.statusText}`);
+        }
 
-  } catch (error) {
-    return res.status(500).json({
-      error: error.message
-    });
-  }
+        const data = await response.json();
+        const generatedContent = data.choices[0].message.content;
+
+        console.log(`✅ 演讲稿生成完成，字数: ${generatedContent.length}`);
+
+        res.status(200).json({
+            success: true,
+            content: generatedContent,
+            provider: provider,
+            model: modelName,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('❌ 生成演讲稿失败:', error);
+        res.status(500).json({ error: error.message });
+    }
 }
